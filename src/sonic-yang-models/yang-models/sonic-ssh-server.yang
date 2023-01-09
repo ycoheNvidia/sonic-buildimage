@@ -1,0 +1,45 @@
+
+//filename:  sonic-ssh_server.yang
+module sonic-sshg {
+    yang-version 1.1;
+    namespace "http://github.com/Azure/sonic-ssh_global";
+	prefix sshg;
+
+    description "SSH SERVER CONFIG YANG Module for SONiC OS";
+
+	revision 2022-08-29 {
+        description
+            "First Revision";
+    }
+
+    container sonic-ssh_server {
+		container SSH_SERVER {
+			description "SSH SERVER CONFIG part of config_db.json";
+			container POLICIES {
+				leaf authentication_retries {
+					description "number of login attepmts";
+					default 6;
+					type uint8 {
+						range 1..100;
+					}
+				}
+				leaf login_timeout {
+					description "login timeout (secs unit)";
+					default 120;
+					type uint32 {
+						range 1..600;
+					}
+				}
+				leaf ports {
+					description "ssh port numbers";
+                    type string {
+                        pattern '[0-9]+(,[0-9]+)*' {
+                            error-message "Invalid port numbers value";
+                            error-app-tag ssh-server-ports-invalid-value;
+                        }
+                    }
+				}
+			}/*container policies */
+		} /* container SSH_SERVER  */
+    }/* container sonic-sshg */
+}/* end of module sonic-sshg */
