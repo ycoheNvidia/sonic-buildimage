@@ -1,6 +1,6 @@
 
 //filename:  sonic-ssh_server.yang
-module sonic-sshg {
+module sonic-ssh-server {
     yang-version 1.1;
     namespace "http://github.com/Azure/sonic-ssh_global";
 	prefix sshg;
@@ -12,7 +12,7 @@ module sonic-sshg {
             "First Revision";
     }
 
-    container sonic-ssh_server {
+    container sonic-ssh-server {
 		container SSH_SERVER {
 			description "SSH SERVER CONFIG part of config_db.json";
 			container POLICIES {
@@ -41,5 +41,5 @@ module sonic-sshg {
 				}
 			}/*container policies */
 		} /* container SSH_SERVER  */
-    }/* container sonic-sshg */
-}/* end of module sonic-sshg */
+    }/* container sonic-ssh-server */
+}/* end of module sonic-ssh-server */
