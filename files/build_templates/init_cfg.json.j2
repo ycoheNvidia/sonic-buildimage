@@ -140,5 +140,16 @@
             "login_timeout": "120",
             "ports": "22"
         }
+    },
+    "SYSTEM_DEFAULTS" : {
+{%- if include_mux == "y" %}
+        "mux_tunnel_egress_acl": {
+{%- if sonic_asic_platform == "mellanox" %}
+            "status": "enabled"
+{% else %}
+            "status": "disabled"
+{% endif %}
+        }
+{% endif %}
     }
 }
