@@ -13,16 +13,10 @@
 #  AGENT BEHAVIOUR
 #
 
-#  Listen for connections on all ip addresses, including eth0, ipv4 lo
+#  Listen for connections on all ip addresses, including eth0, ipv4 and ipv6 lo
 #
-{% if SNMP_AGENT_ADDRESS_CONFIG %}
-{% for (agentip, port, vrf) in SNMP_AGENT_ADDRESS_CONFIG %}
-agentAddress {{ agentip }}{% if port %}:{{ port }}{% endif %}{% if vrf %}%{{ vrf }}{% endif %}{{ "" }}
-{% endfor %}
-{% else %}
 agentAddress udp:161
 agentAddress udp6:161
-{% endif %}
 
 ###############################################################################
 #

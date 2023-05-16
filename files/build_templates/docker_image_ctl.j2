@@ -531,8 +531,49 @@ start() {
 {%- if sonic_asic_platform == "mellanox" %}
     # TODO: Mellanox will remove the --tmpfs exception after SDK socket path changed in new SDK version
 {%- endif %}
+    if [ -z "$DEV" ]; then
+        pmon_sdk_sock="SX_API_SOCKET_FILE=/var/run/sx_sdk/sx_api.sock"
+        syncd_flag="-v"
+        syncd_var="/dev/shm:/dev/shm:rw"
+        ipc_var=""
+    else
+        pmon_sdk_sock="SX_API_SOCKET_FILE=/var/run/sx_sdk/sx_api_0.sock"
+        syncd_flag="--device"
+        syncd_var="/dev/sxdevs/sxcdev$(( $DEV + 1 )):/dev/sxdevs/sxcdev"
+        ipc_var="private"
+    fi
+{%- if docker_container_name == "snmp" %}
+# get snmp listening address and port list from redis
+addr_port_values=$(python3 -c 'from swsscommon.swsscommon import ConfigDBConnector; cfg_db = ConfigDBConnector();  cfg_db.connect(wait_for_init=True, retry_on=True); [print(k[0] + "|" + k[1]) for k in cfg_db.get_keys("SNMP_AGENT_ADDRESS_CONFIG|*")]')
+
+fwd_port_values=""
+# Loop over each value in the list
+while read -r value; do
+  # Split the value and port number (if any)
+  parts=(${value//|/ })
+  value="${parts[0]}"
+  port="${parts[1]:-}"
+
+  # Check if the value is an IPv4 address
+  if [ "$fwd_port_values" != "" ]; then
+    fwd_port_values="$fwd_port_values"$'\n'
+  fi
+  if [[ $value =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    # IPv4 address, use as is
+    fwd_port_values="$fwd_port_values$value:$port:161/udp"
+  else
+    # Not an IPv4 address, wrap in []
+    fwd_port_values="$fwd_port_values[$value]:$port:161/udp"
+  fi
+done <<< "$addr_port_values"
+
+{%- endif %}
     docker create {{docker_image_run_opt}} \
+    {%- if docker_container_name != "snmp" %}
         --net=$NET \
+    {%- else %}
+     $(echo "$fwd_port_values" | sed 's/^/-p /' | tr '\n' ' ') \
+    {%- endif %}
         -e RUNTIME_OWNER=local \
         --uts=host \{# W/A: this should be set per-docker, for those dockers which really need host's UTS namespace #}
 {%- if install_debug_image == "y" %}
@@ -646,6 +687,9 @@ stop() {
     /usr/local/bin/container stop -t 60 $DOCKERNAME
     {%- else %}
     /usr/local/bin/container stop $DOCKERNAME
+    {%- if docker_container_name == "snmp" %}
+    docker rm $DOCKERNAME
+    {%- endif %}
     {%- endif %}
 }
 
