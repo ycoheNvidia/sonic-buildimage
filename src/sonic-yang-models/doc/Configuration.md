@@ -33,8 +33,10 @@ Table of Contents
          * [FG_NHG](#fg_nhg)  
          * [FG_NHG_MEMBER](#fg_nhg_member)  
          * [FG_NHG_PREFIX](#fg_nhg_prefix)  
+         * [FABRIC_MONITOR](#fabric-monitor)
          * [FLEX_COUNTER_TABLE](#flex_counter_table)  
          * [Hash](#hash)  
+         * [IPv6 Link-local] (#ipv6-link-local)
          * [KDUMP](#kdump)  
          * [Kubernetes Master](#kubernetes-master)  
          * [L2 Neighbors](#l2-neighbors)  
@@ -1042,6 +1044,21 @@ The FG_NHG_PREFIX table provides the FG_NHG_PREFIX for which FG behavior is desi
 }
 ```
 
+### FABRIC_MONITOR
+```
+{
+"FABRIC_MONITOR": {
+    "FABRIC_MONITOR_DATA": {
+        "monErrThreshCrcCells": "1",
+        "monErrThreshRxCells": "61035156",
+        "monPollThreshIsolation": "1",
+        "monPollThreshRecovery": "8"
+    }
+  }
+}
+
+```
+
 
 ### MPLS_TC_TO_TC_MAP
 ```
@@ -1138,6 +1155,30 @@ The configuration is applied globally for each ECMP and LAG on a switch.
         }
     }
 }
+```
+
+### IPv6 Link-local
+```
+{
+    "INTERFACE": {
+        "Ethernet8": {
+            "ipv6_use_link_local_only": "disable"
+        }
+    },
+
+    "PORTCHANNEL_INTERFACE": {
+        "PortChannel01": {
+            "ipv6_use_link_local_only": "enable"
+        }
+    },
+
+    "VLAN_INTERFACE": {
+        "Vlan1000": {
+            "ipv6_use_link_local_only": "enable"
+        }
+    }
+}
+
 ```
 
 ### KDUMP
