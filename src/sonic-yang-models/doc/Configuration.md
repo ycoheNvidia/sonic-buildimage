@@ -1,4 +1,3 @@
-=======
 # SONiC Configuration Database Manual
 
 Table of Contents
