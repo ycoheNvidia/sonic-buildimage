@@ -70,12 +70,13 @@ Table of Contents
          * [Versions](#versions)  
          * [VLAN](#vlan)   
          * [VLAN_MEMBER](#vlan_member)  
+         * [VNET](#vnet)
          * [VOQ Inband Interface](#voq-inband-interface)  
          * [VXLAN](#vxlan)  
          * [Virtual router](#virtual-router)  
          * [LOGGER](#logger)           
          * [WRED_PROFILE](#wred_profile)  
-         * [PASSWORD_HARDENING](#password_hardening)
+         * [PASSWORD_HARDENING](#password_hardening)  
          * [SSH_SERVER](#ssh-server)    
          * [SYSTEM_DEFAULTS table](#systemdefaults-table)  
          * [RADIUS](#radius)  
@@ -926,7 +927,8 @@ instance is supported in SONiC.
         "type": "ToRRouter",
         "bgp_adv_lo_prefix_as_128" : "true",
         "buffer_model": "traditional",
-        "yang_config_validation": "disable"
+        "yang_config_validation": "disable",
+        "rack_mgmt_map": "dummy_value"
     }
   }
 }
@@ -2067,6 +2069,33 @@ channel name as object key, and tagging mode as attributes.
 }
 ```
 
+### VNET
+
+VNET table has Vnet name as the object key, and vxlan_tunnel name, scope, vni, peer list, advertised prefix, src mac, and overlay dest mac as attributes.
+The vxlan_tunnel name (mandatory) is the tunnel name from the VXLAN table. scope (optional) must "default", vni (mandatory) is the vxlan tunnel vni, peer_list (optional) is for Vnet
+peering, advertise_prefix (optional) is used to allow advertisement of this vnet's routes, overlay_dmac (optional) is the mac address which is used for VNET ping
+monitoring sessions for the vnet routes and is optional.
+
+```
+{
+"VNET": {
+	"Vnet1-1": {
+	    "vxlan_tunnel": "vtep1",
+		"scope": "default",
+		"vni": "10011",
+		"peer_list": "",
+		"advertise_prefix": "true",
+		"overlay_dmac": "22:33:44:55:66:77"
+	},
+    "Vnetv4_v4-0": {
+	    "vxlan_tunnel": "vtep2",
+		"scope": "default",
+		"vni": "10011",
+	}
+  }
+}
+```
+
 ### VOQ INBAND INTERFACE
 
 VOQ_INBAND_INTERFACE holds the name of the inband system port dedicated for cpu communication. At this time, only inband_type of "port" is supported
@@ -2243,7 +2272,6 @@ There are 4 classes
   }
 }
 ```
-
 
 ### SSH_SERVER
 
