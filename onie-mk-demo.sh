@@ -151,16 +151,16 @@ if [ "$SECURE_UPGRADE_MODE" = "dev" -o "$SECURE_UPGRADE_MODE" = "prod" ]; then
             echo "dev sign script ${scripts_dir}/sign_image_dev.sh not found"
             rm -rf ${output_file}
         }
-        ${scripts_dir}/sign_image_dev.sh ${cert_file} ${key_file} ${output_file} ${CMS_SIG} || { 
+        (${scripts_dir}/sign_image_dev.sh ${cert_file} ${key_file} ${output_file} ${CMS_SIG}) || {
             echo "CMS sign error $?"
             rm -rf ${CMS_SIG} ${output_file}
         }
     else # "$SECURE_UPGRADE_MODE" has to be equal to "prod"
-        . ${scripts_dir}/sign_image_${machine}.sh || {
+        [ -f ${scripts_dir}/sign_image_${machine}.sh ] || {
             echo "prod sign script ${scripts_dir}/sign_image_${machine}.sh not found"
             rm -rf ${output_file}
         }
-        sign_image_prod ${output_file} ${CMS_SIG} ${SECURE_UPGRADE_MODE} || { 
+        (${scripts_dir}/sign_image_${machine}.sh ${output_file} ${CMS_SIG} ${SECURE_UPGRADE_MODE}) || {
             echo "CMS sign error $?"
             rm -rf ${CMS_SIG} ${output_file}
         }
