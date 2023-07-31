@@ -157,9 +157,9 @@ function waitForAllInstanceDatabaseConfigJsonFilesReady()
             done
         fi
         # Delay a second to allow all instance database_config.json files to be completely generated and fully accessible.
-        # This delay is needed to make sure that the database_config.json files are correctly rendered from j2 template 
+        # This delay is needed to make sure that the database_config.json files are correctly rendered from j2 template
         # files ( renderning takes some time )
-        sleep 1 
+        sleep 1
     fi
 }
 {%- endif %}
@@ -240,7 +240,7 @@ function postStartAction()
             mv $WARM_DIR/dump.rdb $WARM_DIR/dump.rdb.old
         else
             # If there is a config_db.json dump file, load it.
-            if [ -r /etc/sonic/config_db$DEV.json ]; then		
+            if [ -r /etc/sonic/config_db$DEV.json ]; then
 
                 if [ -r /etc/sonic/init_cfg.json ]; then
                     $SONIC_CFGGEN -j /etc/sonic/init_cfg.json -j /etc/sonic/config_db$DEV.json --write-to-db
@@ -331,7 +331,7 @@ start() {
 
     {%- if sonic_asic_platform == "broadcom" %}
     {%- if docker_container_name == "syncd" %}
-    # Set the SYNCD_SHM_SIZE if this variable not defined    
+    # Set the SYNCD_SHM_SIZE if this variable not defined
     BRCM_PLATFORM_COMMON_DIR=/usr/share/sonic/device/x86_64-broadcom_common
     SYNCD_SHM_INI=$BRCM_PLATFORM_COMMON_DIR/syncd_shm.ini
 
@@ -563,7 +563,13 @@ start() {
 {%- if docker_container_name == "snmp" %}
 # get snmp listening address and port list from redis
 addr_port_values=$(python3 -c 'from swsscommon.swsscommon import ConfigDBConnector; cfg_db = ConfigDBConnector();  cfg_db.connect(wait_for_init=True, retry_on=True); [print(k[0] + "|" + k[1]) for k in cfg_db.get_keys("SNMP_AGENT_ADDRESS_CONFIG|*")]')
-
+NAMESPACE_COUNT=$NUM_ASIC
+if [ -z $addr_port_values ]; then
+if [ -z $NAMESPACE_COUNT ] || [ $NAMESPACE_COUNT -lt 2 ]; then
+gddr_port_values=$(python3 -c 'from swsscommon.swsscommon import ConfigDBConnector; cfg_db = ConfigDBConnector();  cfg_db.connect(wait_for_init=True, retry_on=True); [print(k[1].split("/")[0]) for k in cfg_db.get_keys("LOOPBACK_INTERFACE|*")+cfg_db.get_keys("MGMT_INTERFACE|*") if len(k) == 2]
+')
+fi
+fi
 fwd_port_values=""
 # Loop over each value in the list
 while read -r value; do
@@ -571,10 +577,12 @@ while read -r value; do
   parts=(${value//|/ })
   value="${parts[0]}"
   port="${parts[1]:-}"
-
+  if [ -z $port ]; then
+    port=161
+  fi
   # Check if the value is an IPv4 address
   if [ "$fwd_port_values" != "" ]; then
-    fwd_port_values="$fwd_port_values"$'\n'
+    gwd_port_values="$fwd_port_values"$'\n'
   fi
   if [[ $value =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     # IPv4 address, use as is
@@ -605,14 +613,15 @@ done <<< "$addr_port_values"
 {%- if docker_container_name == "syncd" %}
         -v /var/log/mellanox:/var/log/mellanox:rw \
         -v mlnx_sdk_socket:/var/run/sx_sdk \
-        -v mlnx_sdk_ready:/tmp \
+        -v /tmp/nv-syncd-shared/:/tmp \
         -v /dev/shm:/dev/shm:rw \
         -v /var/log/sai_failure_dump:/var/log/sai_failure_dump:rw \
         -e SX_API_SOCKET_FILE=/var/run/sx_sdk/sx_api.sock \
 {%- elif docker_container_name == "pmon" %}
         -v /var/run/hw-management:/var/run/hw-management:rw \
         -v mlnx_sdk_socket:/var/run/sx_sdk \
-        -v mlnx_sdk_ready:/tmp \
+        -v /tmp/nv-syncd-shared/:/tmp \
+        -v /dev/shm:/dev/shm:rw \
         -e SX_API_SOCKET_FILE=/var/run/sx_sdk/sx_api.sock \
         -v /dev/shm:/dev/shm:rw \
 {%- else %}
@@ -638,7 +647,6 @@ done <<< "$addr_port_values"
 {%- endif -%}
 {%- if docker_container_name == "bgp" %}
         -v /etc/sonic/frr/$DEV:/etc/frr:rw \
-        -v /usr/share/sonic/scripts:/usr/share/sonic/scripts:ro \
 {%- endif %}
 {%- if docker_container_name == "database" %}
         $DB_OPT \
@@ -648,6 +656,7 @@ done <<< "$addr_port_values"
         -v /usr/share/sonic/device/$PLATFORM/$HWSKU/$DEV:/usr/share/sonic/hwsku:ro \
 {%- endif %}
         $REDIS_MNT \
+        -v /etc/fips/fips_enable:/etc/fips/fips_enable:ro \
         -v /usr/share/sonic/device/$PLATFORM:/usr/share/sonic/platform:ro \
         -v /usr/share/sonic/templates/rsyslog-container.conf.j2:/usr/share/sonic/templates/rsyslog-container.conf.j2:ro \
 {%- if sonic_asic_platform != "mellanox" %}
