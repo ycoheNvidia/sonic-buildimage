@@ -235,6 +235,7 @@ function postStartAction()
                  ($(docker exec -i database$DEV sonic-db-cli PING | grep -c PONG) -gt 0) ]]; do
           sleep 1;
         done
+
         if [[ ("$BOOT_TYPE" == "warm" || "$BOOT_TYPE" == "fastfast" || "$BOOT_TYPE" == "fast") && -f $WARM_DIR/dump.rdb ]]; then
             # retain the dump file from last boot for debugging purposes
             mv $WARM_DIR/dump.rdb $WARM_DIR/dump.rdb.old
@@ -248,28 +249,18 @@ function postStartAction()
                     $SONIC_CFGGEN -j /etc/sonic/config_db$DEV.json --write-to-db
                 fi
             fi
-
-            if [[ "$BOOT_TYPE" == "fast" ]]; then
-                # set the key to expire in 3 minutes
-                $SONIC_DB_CLI STATE_DB SET "FAST_REBOOT|system" "1" "EX" "180"
-            fi
-
-            $SONIC_DB_CLI CONFIG_DB SET "CONFIG_DB_INITIALIZED" "1"
         fi
 
-        if [ -e /tmp/pending_config_migration ]; then
+        if [ -e /tmp/pending_config_migration ] || [ -e /tmp/pending_config_initialization ]; then
             # this is first boot to a new image, config-setup execution is pending.
-            # For fast/cold reboot case, DB contains nothing at this point
-            # Call db_migrator after config-setup loads the config (from old config or minigraph)
-            echo "Delaying db_migrator until config migration is over"
+            # for warmboot case, DB is loaded but migration is still pending
+            # For firstbboot/fast/cold reboot case, DB contains nothing at this point
+            # unset CONFIG_DB_INITIALIZED to indicate pending config load and migration
+            # This flag will be set to "1" after DB migration/initialization is completed as part of config-setup
+            $SONIC_DB_CLI CONFIG_DB SET "CONFIG_DB_INITIALIZED" "0"
         else
-            # this is not a first time boot to a new image. Datbase container starts w/ old pre-existing config
-            if [[ -x /usr/local/bin/db_migrator.py ]]; then
-                # Migrate the DB to the latest schema version if needed
-                if [ -z "$DEV" ]; then
-                    /usr/local/bin/db_migrator.py -o migrate
-                fi
-            fi
+            # set CONFIG_DB_INITIALIZED to indicate end of config load and migration
+            $SONIC_DB_CLI CONFIG_DB SET "CONFIG_DB_INITIALIZED" "1"
         fi
         # Add redis UDS to the redis group and give read/write access to the group
         REDIS_SOCK="/var/run/redis${DEV}/redis.sock"
@@ -566,8 +557,7 @@ addr_port_values=$(python3 -c 'from swsscommon.swsscommon import ConfigDBConnect
 NAMESPACE_COUNT=$NUM_ASIC
 if [ -z $addr_port_values ]; then
 if [ -z $NAMESPACE_COUNT ] || [ $NAMESPACE_COUNT -lt 2 ]; then
-gddr_port_values=$(python3 -c 'from swsscommon.swsscommon import ConfigDBConnector; cfg_db = ConfigDBConnector();  cfg_db.connect(wait_for_init=True, retry_on=True); [print(k[1].split("/")[0]) for k in cfg_db.get_keys("LOOPBACK_INTERFACE|*")+cfg_db.get_keys("MGMT_INTERFACE|*") if len(k) == 2]
-')
+addr_port_values=$(python3 -c 'from swsscommon.swsscommon import ConfigDBConnector; cfg_db = ConfigDBConnector();  cfg_db.connect(wait_for_init=True, retry_on=True); [print(k[1].split("/")[0].lower() + "%" + k[0]) if len(k) == 2 and k[1].split('/')[0].lower().startswith("fe80") else print(k[1].split("/")[0].lower()) for k in cfg_db.get_keys("LOOPBACK_INTERFACE|*")+cfg_db.get_keys("MGMT_INTERFACE|*") if len(k) == 2]')
 fi
 fi
 fwd_port_values=""
@@ -582,7 +572,7 @@ while read -r value; do
   fi
   # Check if the value is an IPv4 address
   if [ "$fwd_port_values" != "" ]; then
-    gwd_port_values="$fwd_port_values"$'\n'
+    fwd_port_values="$fwd_port_values"$'\n'
   fi
   if [[ $value =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     # IPv4 address, use as is
