@@ -474,14 +474,14 @@ start() {
     {%- endif %}
 
     if [ -z "$DEV" ]; then
-	{%- if docker_container_name == "database" %}
+    {%- if docker_container_name == "database" %}
         NET="bridge"
-	PORT_MAP="-p 127.0.0.1:6379:6379"
-        {%- elif docker_container_name == "snmp" %}
-	NET="bridge"
-	{%- else %}
-	NET="host"
-	{%- endif %}
+        PORT_MAP="-p 127.0.0.1:6379:6379"
+    {%- elif docker_container_name == "snmp" %}
+    NET="bridge"
+    {%- else %}
+    NET="host"
+    {%- endif %}
 
 
         # For Multi-ASIC platform we have to mount the redis paths for database instances running in different
@@ -540,17 +540,6 @@ start() {
 {%- if sonic_asic_platform == "mellanox" %}
     # TODO: Mellanox will remove the --tmpfs exception after SDK socket path changed in new SDK version
 {%- endif %}
-    if [ -z "$DEV" ]; then
-        pmon_sdk_sock="SX_API_SOCKET_FILE=/var/run/sx_sdk/sx_api.sock"
-        syncd_flag="-v"
-        syncd_var="/dev/shm:/dev/shm:rw"
-        ipc_var=""
-    else
-        pmon_sdk_sock="SX_API_SOCKET_FILE=/var/run/sx_sdk/sx_api_0.sock"
-        syncd_flag="--device"
-        syncd_var="/dev/sxdevs/sxcdev$(( $DEV + 1 )):/dev/sxdevs/sxcdev"
-        ipc_var="private"
-    fi
 {%- if docker_container_name == "snmp" %}
 # get snmp listening address and port list from redis
 addr_port_values=$(python3 -c 'from swsscommon.swsscommon import ConfigDBConnector; cfg_db = ConfigDBConnector();  cfg_db.connect(wait_for_init=True, retry_on=True); [print(k[0] + "|" + k[1]) for k in cfg_db.get_keys("SNMP_AGENT_ADDRESS_CONFIG|*")]')
