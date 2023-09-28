@@ -191,6 +191,9 @@ function postStartAction()
                    ip link add name ns-eth1"$NET_NS" type veth peer name eth1@"$NET_NS"
                    ip link set dev eth1@"$NET_NS" master br1
                    ip link set dev eth1@"$NET_NS" up
+                   # For chassis system where Linux bridge is used on supervisor for midplane communication
+                   # assign alternate name as eth1-midplane for generic design
+                   ip link property add dev br1 altname eth1-midplane
            else
                    ip link add name ns-eth1"$NET_NS" link eth1-midplane type macvlan mode bridge
            fi
@@ -259,9 +262,18 @@ function postStartAction()
             # This flag will be set to "1" after DB migration/initialization is completed as part of config-setup
             $SONIC_DB_CLI CONFIG_DB SET "CONFIG_DB_INITIALIZED" "0"
         else
+            $SONIC_DB_CLI CONFIG_DB SET "CONFIG_DB_INITIALIZED" "0"
+            # this is not a first time boot to a new image. Datbase container starts w/ old pre-existing config
+            if [[ -x /usr/local/bin/db_migrator.py ]]; then
+                # Migrate the DB to the latest schema version if needed
+                if [ -z "$DEV" ]; then
+                    /usr/local/bin/db_migrator.py -o migrate
+                fi
+            fi
             # set CONFIG_DB_INITIALIZED to indicate end of config load and migration
             $SONIC_DB_CLI CONFIG_DB SET "CONFIG_DB_INITIALIZED" "1"
         fi
+
         # Add redis UDS to the redis group and give read/write access to the group
         REDIS_SOCK="/var/run/redis${DEV}/redis.sock"
     else
@@ -474,10 +486,7 @@ start() {
     {%- endif %}
 
     if [ -z "$DEV" ]; then
-    {%- if docker_container_name == "database" %}
-        NET="bridge"
-        PORT_MAP="-p 127.0.0.1:6379:6379"
-    {%- elif docker_container_name == "snmp" %}
+    {%- if docker_container_name == "snmp" %}
     NET="bridge"
     {%- else %}
     NET="host"
@@ -574,9 +583,8 @@ done <<< "$addr_port_values"
 
 {%- endif %}
     docker create {{docker_image_run_opt}} \
+{%- if docker_container_name != "dhcp_server" %}
         --net=$NET \
-{%- if docker_container_name == "database" %}
-        $PORT_MAP \
 {%- elif docker_container_name == "snmp" %}
         $(echo "$fwd_port_values" | sed 's/^/-p /' | tr '\n' ' ') \
 {%- endif %}
