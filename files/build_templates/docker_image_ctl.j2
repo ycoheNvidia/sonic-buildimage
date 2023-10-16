@@ -486,11 +486,11 @@ start() {
     {%- endif %}
 
     if [ -z "$DEV" ]; then
-    {%- if docker_container_name == "snmp" %}
-    NET="bridge"
-    {%- else %}
-    NET="host"
-    {%- endif %}
+        {%- if docker_container_name == "snmp" %}
+        NET="bridge"
+        {%- else %}
+        NET="host"
+        {%- endif %}
 
 
         # For Multi-ASIC platform we have to mount the redis paths for database instances running in different
